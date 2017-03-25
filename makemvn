@@ -1,0 +1,87 @@
+#!/bin/sh
+#########################################################################
+# File Name: makemvn
+# Author: Carson Wang
+# mail: carson.wang@droi.com
+# Created Time: 2017-03-14 11:27:56
+#########################################################################
+
+project_name='infohub'
+
+old='1.2.22'
+new='1.2.23'
+dir='com/idroi/infohub'
+
+old_dir="$dir/$old"
+new_dir="$dir/$new"
+
+
+version='0.0.1'
+
+introd="MakeMaven Command Line Interface
+Version:$version written by Carson Wang
+
+Gerenal Usage:
+  makemvn [command] [<args>]
+
+[--version] [--help][--init]
+
+These are common Makemvn commands used in various situations.
+
+Available Commands:
+  init        initialize maven project
+  version     Print the version number of Makemvn"
+
+suggestion(){
+    command="$1"
+    command=${command//[!a-zA-Z]/}
+    if [[ "$command" == "v"* ]]; then
+        echo "Did you mean this?"
+        echo "\tversion"
+    elif [[ "$command" == "h"* ]]; then
+        echo "Did you mean this?"
+        echo "\thelp"
+    fi
+}
+
+#-- require command argument
+if [ -z "$1" ]; then
+    echo "\033[31;1mCommand argument is required.\033[m"
+    echo "Use 'makemvn --help' or 'makemvn -h' for more information about command."
+    exit 1
+elif [ "$1" == "-h" -o "$1" == "--help" ]; then
+    echo "$introd"
+    exit 0
+elif [ "$1" == "-v" -o "$1" == "--version" ]; then
+    echo "Makemvn version $version"
+    exit 0
+else
+    echo "\033[31;1mUnknown command '$1' for 'makemvn'.\033[m"
+    echo "See more 'makemvn --help'."
+    suggestion "$1"
+    exit -1
+fi
+
+#-- create directory for new version
+mkdir -p $new_dir
+cp -r $old_dir/* $new_dir
+mv $new_dir/$project_name-$old.pom $new_dir/$project_name-$new.pom
+
+
+#-- revise aar and pom
+sed -i "s/$old/$new/g" $new_dir/$project_name-$new.pom
+rm $new_dir/$project_name-$old.aar
+cp $project_name-release.aar $new_dir/$project_name-$new.aar
+
+
+#-- change directory to revise maven-metadata and last updated
+cd $dir
+meta='maven-metadata.xml'
+
+sed -i "/<release>/c\ \ \ \ <release>$new<\/release>" $meta
+sed -i "/<version>$old<\/version>/a \ \ \ \ \ \ <version>$new<\/version>" $meta
+
+now=$(date +'%Y%m%d%H%M%S')
+sed -i "/<lastUpdated>/c\ \ \ \ <lastUpdated>$now<\/lastUpdated>" $meta
+
+cd -
