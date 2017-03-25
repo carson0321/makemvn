@@ -8,29 +8,38 @@
 
 project_name='infohub'
 
+packaging='jar'
+
 old='1.2.22'
 new='1.2.23'
 dir='com/idroi/infohub'
+meta_file='maven-metadata.xml'
+now=$(date +'%Y%m%d%H%M%S')
 
 old_dir="$dir/$old"
 new_dir="$dir/$new"
 
+parent_dir="$PWD"
 
 version='0.0.1'
-
-introd="MakeMaven Command Line Interface
+intro="MakeMaven Command Line Interface
 Version:$version written by Carson Wang
 
 Gerenal Usage:
   makemvn [command] [<args>]
 
-[--version] [--help][--init]
+[--help] [--version] [--init] [--run] [--push]
 
 These are common Makemvn commands used in various situations.
 
 Available Commands:
-  init        initialize maven project
-  version     Print the version number of Makemvn"
+  version     Print the version number of Makemvn
+  init        Initialize maven project
+  run         Deploy maven's template
+  push        Use git to update remote refs along with associated objects
+
+See 'makemvn [command] --help' or 'makemvn [command] -h' to read about a specific subcommand excluding [--help] [--version]."
+
 
 suggestion(){
     command="$1"
@@ -41,26 +50,122 @@ suggestion(){
     elif [[ "$command" == "h"* ]]; then
         echo "Did you mean this?"
         echo "\thelp"
+    elif [[ "$command" == "i"* ]]; then
+        echo "Did you mean this?"
+        echo "\tinit"
     fi
 }
 
-#-- require command argument
+init(){
+   echo "\033[31;1mInitialize failed.\033[m"
+   echo "Two arguments, which are groupid and artifactid, are required."
+   echo "Use 'makemvn init --help' or 'makemvn -i --help' to see more."
+   echo "Do you want to continue running 'makemvn init' command [y/n]?"
+   echo "If yes, it will lead you to execute; otherwise, the program will terminate."
+   while true; do
+       read yn
+       case $yn in
+           [Yy]* )
+               echo "Please enter your groupID, such as, 'com.idroi' or 'com idroi'."
+               read groupIdArry
+               echo "Please enter your artifactId, such as, 'infohub'."
+               read artifactId
+               break;;
+           [Nn]* ) exit;;
+           * ) echo "Please answer yes or no.";;
+       esac
+   done
+
+}
+
+init_run(){
+    array=(${1//./ })
+    for i in "${!array[@]}"; do
+        mkdir -p "${array[i]}"
+        cd "${array[i]}"
+    done
+    mkdir -p "$2"
+    cd "$2"
+
+    meta_data="<metadata>
+  <groupId>$1</groupId>
+  <artifactId>$2</artifactId>
+  <versioning>
+    <release>0.0.1</release>
+    <versions>
+      <version>0.0.1</version>
+    </versions>
+    <lastUpdated>$now</lastUpdated>
+  </versioning>
+</metadata>"
+    echo "$meta_data" > $meta_file
+
+    mkdir -p "0.0.1"
+    cd "0.0.1"
+    pom_data="<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<project xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd\" xmlns=\"http://maven.apache.org/POM/4.0.0\"
+    xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>$1</groupId>
+  <artifactId>$2</artifactId>
+  <version>0.0.1</version>
+  <packaging>jar</packaging>
+  <description>POM was created from install:install-file</description>
+</project>"
+    echo "$pom_data" > "$2-0.0.1.pom"
+
+    cd $parent_dir
+}
+
+
+
+#-- check command argument
 if [ -z "$1" ]; then
     echo "\033[31;1mCommand argument is required.\033[m"
     echo "Use 'makemvn --help' or 'makemvn -h' for more information about command."
     exit 1
-elif [ "$1" == "-h" -o "$1" == "--help" ]; then
-    echo "$introd"
+elif [ "$1" == "-h" -o "$1" == "--help" -o "$1" == "help" ]; then
+    echo "$intro"
     exit 0
-elif [ "$1" == "-v" -o "$1" == "--version" ]; then
+elif [ "$1" == "-v" -o "$1" == "--version" -o "$1" == "version" ]; then
     echo "Makemvn version $version"
+    exit 0
+elif [ "$1" == "-i" -o "$1" == "--init" -o "$1" == "init" ]; then
+    echo "Initialize maven project..."
+    if [ -z "$2" -a -z "$3" ]; then
+        init
+        groupId=($groupIdArry)
+        groupId="$( IFS=$'.'; echo "${groupId[*]}" )"
+        init_run $groupId $artifactId
+    elif [ "$2" == "-h" -o "$2" == "--help" -o "$1" == "help" ]; then
+        echo "help"
+    elif [ -n "$2" -a -n "$3" ]; then
+        init_run "$2" "$3"
+    else
+        init
+    fi
     exit 0
 else
     echo "\033[31;1mUnknown command '$1' for 'makemvn'.\033[m"
-    echo "See more 'makemvn --help'."
+    echo "Use 'makemvn --help' to see more."
     suggestion "$1"
     exit -1
 fi
+
+
+#-- check OS to determine sed's mode
+if [ "$(uname)" == "Darwin" ]; then
+    #echo "Do something under Mac OS X platform"
+    sed_mode='-ie'
+elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
+    #echo "Do something under GNU/Linux platform"
+    sed_mode='-i'
+elif [ "$(expr substr $(uname -s) 1 10)" == "MINGW32_NT" ]; then
+    echo "Do something under 32 bits Windows NT platform"
+elif [ "$(expr substr $(uname -s) 1 10)" == "MINGW64_NT" ]; then
+    echo "Do something under 64 bits Windows NT platform"
+fi
+
 
 #-- create directory for new version
 mkdir -p $new_dir
@@ -69,19 +174,23 @@ mv $new_dir/$project_name-$old.pom $new_dir/$project_name-$new.pom
 
 
 #-- revise aar and pom
-sed -i "s/$old/$new/g" $new_dir/$project_name-$new.pom
+sed $sed_mode "s/$old/$new/g" $new_dir/$project_name-$new.pom
 rm $new_dir/$project_name-$old.aar
 cp $project_name-release.aar $new_dir/$project_name-$new.aar
 
 
 #-- change directory to revise maven-metadata and last updated
 cd $dir
-meta='maven-metadata.xml'
+sed $sed_mode "/<release>/c\ \ \ \ <release>$new<\/release>" $meta
+sed $sed_mode "/<version>$old<\/version>/a \ \ \ \ \ \ <version>$new<\/version>" $meta
 
-sed -i "/<release>/c\ \ \ \ <release>$new<\/release>" $meta
-sed -i "/<version>$old<\/version>/a \ \ \ \ \ \ <version>$new<\/version>" $meta
+sed $sed_mode "/<lastUpdated>/c\ \ \ \ <lastUpdated>$now<\/lastUpdated>" $meta
 
-now=$(date +'%Y%m%d%H%M%S')
-sed -i "/<lastUpdated>/c\ \ \ \ <lastUpdated>$now<\/lastUpdated>" $meta
+
+#-- delete backup files (name: ***e) when OS is Mac
+if [ "$sed_mode" == "-ie" ]; then
+    rm "$meta"e
+    rm $new/$project_name-$new.pome
+fi
 
 cd -
