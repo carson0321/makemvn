@@ -26,27 +26,47 @@ intro="MakeMaven Command Line Interface
 Version:$version written by Carson Wang
 
 Gerenal Usage:
-  makemvn [command] [<args>]
+  \033[32;1mmakemvn [command] [<args>]\033[m
 
-[--help] [--version] [--init] [--run] [--push]
+  \033[34;1m[--help] [--version] [--init] [--run]\033[m
+
+Abbreviated comparison:
+
+  \033[34;1m[-h] [-v] [-i] [-r]\033[m
 
 These are common Makemvn commands used in various situations.
 
 Available Commands:
-  version     Print the version number of Makemvn
+  version     Print version number of Makemvn
   init        Initialize maven project
   run         Deploy maven's template
-  push        Use git to update remote refs along with associated objects
 
 See 'makemvn [command] --help' or 'makemvn [command] -h' to read about a specific subcommand excluding [--help] [--version]."
+
+intro_init="Initialize maven project
+
+Usage:
+  mmakemvn --init \$groupid \$artifactid
+  makemvn init \$groupid \$artifactid
+  makemvn -i \$groupid \$artifactid
+  makemvn --init
+  makemvn init
+  makemvn -i
+
+Define argument:
+  groupid       It will identify project uniquely across all projects. eg. \033[35;1m'org.apache.maven'\033[m, \033[35;1m'org.apache.commons'\033[m
+  artifactid    It's the name of the jar without version. eg. \033[35;1m'maven'\033[m, \033[35;1m'commons-math'\033[m
+
+  See more on maven official webpage: https://maven.apache.org/guides/mini/guide-naming-conventions.html"
+
 
 #-- check OS to determine sed's mode
 if [ "$(uname)" == "Darwin" ]; then
     #echo "Do something under Mac OS X platform"
-    sed_mode='-ie'
+    sed_mode="-ie"
 elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
     #echo "Do something under GNU/Linux platform"
-    sed_mode='-i'
+    sed_mode="-i"
 elif [ "$(expr substr $(uname -s) 1 10)" == "MINGW32_NT" ]; then
     echo "Do something under 32 bits Windows NT platform"
 elif [ "$(expr substr $(uname -s) 1 10)" == "MINGW64_NT" ]; then
@@ -56,18 +76,25 @@ fi
 
 suggestion(){
     command="$1"
-    command=${command//[!a-zA-Z]/}
-    if [[ "$command" == "v"* ]]; then
-        echo "Did you mean this?"
-        echo "\tversion"
-    elif [[ "$command" == "h"* ]]; then
+    command="${command//[!a-zA-Z]/}"
+    if [[ "$command" == "h"* ]]; then
         echo "Did you mean this?"
         echo "\thelp"
+    elif [[ "$command" == "v"* ]]; then
+        echo "Did you mean this?"
+        echo "\tversion"
     elif [[ "$command" == "i"* ]]; then
         echo "Did you mean this?"
         echo "\tinit"
+    elif [[ "$command" == "r"* ]]; then
+        echo "Did you mean this?"
+        echo "\trun"
+    elif [[ "$command" == "p"* ]]; then
+        echo "Did you mean this?"
+        echo "\tpush"
     fi
 }
+
 
 init(){
    echo "\033[31;1mInitialization failed.\033[m"
@@ -95,8 +122,8 @@ init_run(){
     while true; do
         read -p "Please enter your packaging type (jar or aar): " packaging
         case $packaging in
-            jar* ) packaging='jar'; break;;
-            aar* ) packaging='aar'; break;;
+            jar* ) packaging="jar"; break;;
+            aar* ) packaging="aar"; break;;
             * ) echo "\033[31;1mInput error. Please answer jar or aar.\033[m";;
         esac
     done
@@ -159,12 +186,13 @@ elif [ "$1" == "-v" -o "$1" == "--version" -o "$1" == "version" ]; then
     echo "Makemvn version $version"
     exit 0
 elif [ "$1" == "-i" -o "$1" == "--init" -o "$1" == "init" ]; then
-    echo "Initializing maven project..."
     if [ "$2" == "-h" -o "$2" == "--help" -o "$2" == "help" ]; then
-        echo "help"
+        echo "$intro_init"
     elif [ -n "$2" -a -n "$3" ]; then
+        echo "Initializing maven project..."
         init_run "$2" "$3"
     else
+        echo "Initializing maven project..."
         init
         groupId=($groupIdArry)
         groupId="$( IFS=$'.'; echo "${groupId[*]}" )"
