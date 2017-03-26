@@ -17,24 +17,22 @@ Version:$version written by Carson Wang
 Gerenal Usage:
   \033[32;1mmakemvn [command] [<args>]\033[m
 
-  \033[34;1m[--help] [--version] [--init] [--run]\033[m
-
-Abbreviated comparison:
-
-  \033[34;1m[-h] [-v] [-i] [-r]\033[m
-
 These are common Makemvn commands used in various situations.
 
 Available Commands:
+  \033[34;1m[--help] [--version] [--init] [--run]\033[m
   version     Print version number of Makemvn
   init        Initialize maven project
   run         Deploy maven's template
+
+Abbreviated comparison:
+  \033[34;1m[-h] [-v] [-i] [-r]\033[m
 
 See 'makemvn [command] --help' or 'makemvn [command] -h' to read about a specific subcommand excluding [--help] [--version]."
 
 intro_init="Initialize maven project
 
-Usage:
+Usages:
   mmakemvn --init \$groupid \$artifactid
   makemvn init \$groupid \$artifactid
   makemvn -i \$groupid \$artifactid
@@ -42,12 +40,22 @@ Usage:
   makemvn init
   makemvn -i
 
-Define argument:
+Define arguments:
   groupid       It will identify project uniquely across all projects. eg. \033[35;1m'org.apache.maven'\033[m, \033[35;1m'org.apache.commons'\033[m
   artifactid    It's the name of the jar without version. eg. \033[35;1m'maven'\033[m, \033[35;1m'commons-math'\033[m
 
   See more on maven official webpage: https://maven.apache.org/guides/mini/guide-naming-conventions.html"
 
+
+intro_run="Deploy maven's template
+
+Usages:
+  makemvn --run \$file_path
+  makemvn run \$file_path
+  makemvn -r \$file_path
+
+Define argument:
+  file_path     It's a jar or aar file."
 
 #-- check OS to determine sed's mode
 if [ "$(uname)" == "Darwin" ]; then
@@ -281,7 +289,7 @@ run(){
                 echo "$file isn't a jar or aar file."
                 echo "Use 'makemvn run --help' or 'makemvn -r --help' to see more."
             fi
-        elif [ -n "$2" ]; then
+        elif [ -n "$2" -o -z "$1" ]; then
             echo "\033[31;1mDeployment error.\033[m"
             echo "Use 'makemvn run --help' or 'makemvn -r --help' to see more."
         else
@@ -293,7 +301,7 @@ run(){
         echo "\033[31;1mDeployment error.\033[m"
         echo "Can't find working directory: $PWD/.makemvn"
         echo "Please take 'makemvn init \$groupId \$artifactId' to initialize project first."
-        echo "Use 'makemvn run --help' or 'makemvn -r --help' to see more."
+        echo "Use 'makemvn init --help' or 'makemvn -i --help' to see more."
     fi
 }
 
@@ -317,7 +325,7 @@ elif [ "$1" == "-i" -o "$1" == "--init" -o "$1" == "init" ]; then
     exit 0
 elif [ "$1" == "-r" -o "$1" == "--run" -o "$1" == "run" ]; then
     if [ "$2" == "-h" -o "$2" == "--help" -o "$2" == "help" ]; then
-        echo "help"
+        echo "$intro_run"
     else
         run "$2" "$3"
     fi
