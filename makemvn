@@ -96,29 +96,39 @@ suggestion(){
 }
 
 
+
 init(){
-   echo "\033[31;1mInitialization failed.\033[m"
-   echo "Two arguments, which are groupid and artifactid, are required."
-   echo "Use 'makemvn init --help' or 'makemvn -i --help' to see more."
-   echo "Do you want to continue running 'makemvn init' command [y/n]?"
-   echo "If yes, it will lead you to execute; otherwise, the program will terminate."
-   while true; do
-       read yn
-       case $yn in
-           [Yy]* )
-               echo "Please enter your groupID, such as, 'com.idroi' or 'com idroi'."
-               read groupIdArry
-               echo "Please enter your artifactId, such as, 'infohub'."
-               read artifactId
-               break;;
-           [Nn]* ) exit;;
-           * ) echo "\033[31;1mInput error. Please answer yes or no.\033[m";;
-       esac
-   done
+    echo "Initializing maven project..."
 
-}
+    if [ -z "$1" -o -z "$2" -o -n "$3" ]; then
+        echo "\033[31;1mInitialization failed.\033[m"
+        echo "Two arguments, which are groupid and artifactid, are required."
+        echo "Use 'makemvn init --help' or 'makemvn -i --help' to see more."
+        echo "Do you want to continue running 'makemvn init' command [y/n]?"
+        echo "If yes, it will lead you to execute; otherwise, the program will terminate."
+        while true; do
+            read yn
+            case $yn in
+                [Yy]* )
+                    echo "Please enter your groupID, such as, 'com.idroi' or 'com idroi'."
+                    read groupIdArry
+                    echo "Please enter your artifactId, such as, 'infohub'."
+                    read artifactIdArray
+                    break;;
+                [Nn]* ) exit;;
+                * ) echo "\033[31;1mInput error. Please answer yes or no.\033[m";;
+            esac
+        done
+        groupId=($groupIdArry)
+        groupId="$( IFS=$'.'; echo "${groupId[*]}" )"
+        artifactId=($artifactIdArray)
+        artifactId="$( IFS=$''; echo "${artifactId[*]}" )"
 
-init_run(){
+    else
+        groupId="$1"
+        artifactId="$2"
+    fi
+
     while true; do
         read -p "Please enter your packaging type (jar or aar): " packaging
         case $packaging in
@@ -130,21 +140,21 @@ init_run(){
 
     mkdir -p ".makemvn"
     cd ".makemvn"
-    project_data="{\"groupId\":$1, \"artifactId\":$2, \"packaging\":$packaging, \"version:0.0.1\"}"
+    project_data="{\"groupId\":$groupId, \"artifactId\":$artifactId, \"packaging\":$packaging, \"version:0.0.1\"}"
     echo "$project_data" > "makemvn.project"
     cd ..
 
-    array=(${1//./ })
+    array=(${groupId//./ })
     for i in "${!array[@]}"; do
         mkdir -p "${array[i]}"
         cd "${array[i]}"
     done
-    mkdir -p "$2"
-    cd "$2"
+    mkdir -p "$artifactId"
+    cd "$artifactId"
 
     meta_data="<metadata>
-  <groupId>$1</groupId>
-  <artifactId>$2</artifactId>
+  <groupId>$groupId</groupId>
+  <artifactId>$artifactId</artifactId>
   <versioning>
     <release>0.0.1</release>
     <versions>
@@ -161,24 +171,59 @@ init_run(){
 <project xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd\" xmlns=\"http://maven.apache.org/POM/4.0.0\"
     xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>$1</groupId>
-  <artifactId>$2</artifactId>
+  <groupId>$groupId</groupId>
+  <artifactId>$artifactId</artifactId>
   <version>0.0.1</version>
   <packaging>$packaging</packaging>
   <description>POM was created from install:install-file</description>
 </project>"
-    echo "$pom_data" > "$2-0.0.1.pom"
+    echo "$pom_data" > "$artifactId-0.0.1.pom"
 
     cd $parent_dir
+    echo "\033[32;1mInitialized successfully.\033[m"
 }
 
+run(){
+    echo "Deploying maven's template..."
+    if [ -f ./.makemvn/makemvn.project ]; then
+        if [ -f "$1" -a -z "$2" ]; then
+            array=(${1//// })
+            file="${array[${#array[@]}-1]}"
+            array=(${file//./ })
+            extension="${array[${#array[@]}-1]}"
+            echo "$extension"
+            echo "Please enter your new version, such as, '0.0.1'"
+            read project_version
+            if [[ $project_version =~ ^[0-9]*.[0-9]*.[0-9]*$ ]]; then
+                echo "YES"
+                tes=($project_version)
+                tes="$( IFS=$'.'; echo "${tes[*]}" )"
+                echo "$tes"
+            else
+                echo "NO"
+                echo "$project_version"
+            fi
+        elif [ -n "$2" ]; then
+            echo "\033[31;1mDeployment error.\033[m"
+            echo "Use 'makemvn run --help' or 'makemvn -r --help' to see more."
+        else
+            echo "\033[31;1mDeployment error.\033[m"
+            echo "Can't find such file: $1"
+            echo "Use 'makemvn run --help' or 'makemvn -r --help' to see more."
+        fi
+    else
+        echo "\033[31;1mDeployment error.\033[m"
+        echo "Can't find working directory: $PWD/.makemvn"
+        echo "Please take 'makemvn init \$groupId \$artifactId' to initialize first."
+        echo "Use 'makemvn run --help' or 'makemvn -r --help' to see more."
+    fi
+}
 
 
 #-- check command argument
 if [ -z "$1" ]; then
-    echo "\033[31;1mCommand argument is required.\033[m"
-    echo "Use 'makemvn --help' or 'makemvn -h' for more information about command."
-    exit 1
+    echo "$intro"
+    exit 0
 elif [ "$1" == "-h" -o "$1" == "--help" -o "$1" == "help" ]; then
     echo "$intro"
     exit 0
@@ -188,49 +233,20 @@ elif [ "$1" == "-v" -o "$1" == "--version" -o "$1" == "version" ]; then
 elif [ "$1" == "-i" -o "$1" == "--init" -o "$1" == "init" ]; then
     if [ "$2" == "-h" -o "$2" == "--help" -o "$2" == "help" ]; then
         echo "$intro_init"
-    elif [ -n "$2" -a -n "$3" ]; then
-        echo "Initializing maven project..."
-        init_run "$2" "$3"
     else
-        echo "Initializing maven project..."
-        init
-        groupId=($groupIdArry)
-        groupId="$( IFS=$'.'; echo "${groupId[*]}" )"
-        init_run $groupId $artifactId
+        init "$2" "$3" "$4"
     fi
     exit 0
 elif [ "$1" == "-r" -o "$1" == "--run" -o "$1" == "run" ]; then
-    echo "Deploying maven's template..."
     if [ "$2" == "-h" -o "$2" == "--help" -o "$2" == "help" ]; then
         echo "help"
-    elif [ -n "$2" ]; then
-        if [ -f ./.makemvn/makemvn.project ]; then
-            if [ -f "$2" ]; then
-                echo "Please enter your new version, such as, '0.0.1'"
-                read project_version
-                if [[ $project_version =~ ^[0-9]*.[0-9]*.[0-9]*$ ]]; then
-                    echo "YES"
-                    tes=($project_version)
-                    tes="$( IFS=$'.'; echo "${tes[*]}" )"
-                    echo "$tes"
-                else
-                    echo "NO"
-                    echo "$project_version"
-                fi
-            fi
-        else
-            echo "\033[31;1mDeployment error.\033[m"
-            echo "Can't find working directory: $PWD/.makemvn"
-            echo "Please take 'makemvn init \$groupId \$artifactId' to initialize first."
-            echo "Use 'makemvn init --help' or 'makemvn -i --help' to see more."
-        fi
     else
-        echo "Failed"
+        run "$2" "$3"
     fi
     exit 0
 else
     echo "\033[31;1mUnknown command '$1' for 'makemvn'.\033[m"
-    echo "Use 'makemvn --help' to see more."
+    echo "Use 'makemvn --help' or 'makemvn -h' to see more."
     suggestion "$1"
     exit -1
 fi
