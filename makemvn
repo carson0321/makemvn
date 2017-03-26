@@ -6,19 +6,8 @@
 # Created Time: 2017-03-14 11:27:56
 #########################################################################
 
-project_name='infohub'
-
-packaging='jar'
-
-old='1.2.22'
-new='1.2.23'
-dir='com/idroi/infohub'
 meta_file='maven-metadata.xml'
 now=$(date +'%Y%m%d%H%M%S')
-
-old_dir="$dir/$old"
-new_dir="$dir/$new"
-
 parent_dir="$PWD"
 
 version='0.0.1'
@@ -64,9 +53,11 @@ Define argument:
 if [ "$(uname)" == "Darwin" ]; then
     #echo "Do something under Mac OS X platform"
     sed_mode="-ie"
+    grep_mode="-Eo"
 elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
     #echo "Do something under GNU/Linux platform"
     sed_mode="-i"
+    grep_mode="-Po"
 elif [ "$(expr substr $(uname -s) 1 10)" == "MINGW32_NT" ]; then
     echo "Do something under 32 bits Windows NT platform"
 elif [ "$(expr substr $(uname -s) 1 10)" == "MINGW64_NT" ]; then
@@ -130,17 +121,29 @@ init(){
     fi
 
     while true; do
-        read -p "Please enter your packaging type (jar or aar): " packaging
-        case $packaging in
-            jar* ) packaging="jar"; break;;
-            aar* ) packaging="aar"; break;;
-            * ) echo "\033[31;1mInput error. Please answer jar or aar.\033[m";;
-        esac
+        read -e -p "Please enter your jar or aar file path: " file_path
+        if [ -f "$file_path" ]; then
+            array=(${file_path//// })
+            file="${array[${#array[@]}-1]}"
+            array=(${file//./ })
+            extension="${array[${#array[@]}-1]}"
+            if [ "$extension" == "jar" -o "$extension" == "aar" ]; then
+                break
+            else
+                echo "\033[31;1mInput error. Please answer jar or aar.\033[m"
+            fi
+        else
+            echo "\033[31;1mInput error. Please answer jar or aar.\033[m"
+        fi
     done
 
+    packaging="$extension"
     mkdir -p ".makemvn"
     cd ".makemvn"
-    project_data="{\"groupId\":$groupId, \"artifactId\":$artifactId, \"packaging\":$packaging, \"version:0.0.1\"}"
+    project_data="{\"groupId\":$groupId,
+\"artifactId\":$artifactId,
+\"packaging\":$packaging,
+\"version\":0.0.1}"
     echo "$project_data" > "makemvn.project"
     cd ..
 
@@ -148,9 +151,15 @@ init(){
     for i in "${!array[@]}"; do
         mkdir -p "${array[i]}"
         cd "${array[i]}"
+        if [ -z "$project_dir" ]; then
+            project_dir="${array[i]}"
+        else
+            project_dir="$project_dir/${array[i]}"
+        fi
     done
     mkdir -p "$artifactId"
     cd "$artifactId"
+    project_dir="$project_dir/$artifactId"
 
     meta_data="<metadata>
   <groupId>$groupId</groupId>
@@ -180,6 +189,7 @@ init(){
     echo "$pom_data" > "$artifactId-0.0.1.pom"
 
     cd $parent_dir
+    cp $file_path $project_dir/0.0.1/$artifactId-0.0.1.$packaging
     echo "\033[32;1mInitialized successfully.\033[m"
 }
 
@@ -191,17 +201,85 @@ run(){
             file="${array[${#array[@]}-1]}"
             array=(${file//./ })
             extension="${array[${#array[@]}-1]}"
-            echo "$extension"
-            echo "Please enter your new version, such as, '0.0.1'"
-            read project_version
-            if [[ $project_version =~ ^[0-9]*.[0-9]*.[0-9]*$ ]]; then
-                echo "YES"
-                tes=($project_version)
-                tes="$( IFS=$'.'; echo "${tes[*]}" )"
-                echo "$tes"
+            if [ "$extension" == "jar" -o "$extension" == "aar" ]; then
+                old=$( grep -Eo "\"version\":.*?[^\]}" "./.makemvn/makemvn.project" )
+                old=$( echo $old | tr -d -c 0-9.)
+                echo "Please enter your new version, such as, '0.0.1' or '0 0 1'."
+                while true; do
+                    read project_version
+                    if [[ $project_version =~ ^[0-9]*.[0-9]*.[0-9]*$ ]]; then
+                        new=($project_version)
+                        new="$( IFS=$'.'; echo "${new[*]}" )"
+
+                        array=(${old//./ })
+                        check_old="$( IFS=$''; echo "${array[*]}" )"
+                        array=(${new//./ })
+                        check_new="$( IFS=$''; echo "${array[*]}" )"
+
+                        if [ "$check_new" -gt "$check_old" ]; then
+                            break;
+                        else
+                            echo "\033[31;1mInput error.\033[m"
+                            echo "Old version number >= News version number."
+                        fi
+                    else
+                        echo "\033[31;1mInput error.\033[m"
+                        echo "Please answer numbers, such as, '0.0.1' or '0 0 1'."
+                    fi
+                done
+
+                groupId=$( grep "$grep_mode" "\"groupId\":.*?[^\]," "./.makemvn/makemvn.project" )
+                array=(${groupId//:/ })
+                array=(${array[1]//,/ })
+                groupId=${array}
+
+                artifactId=$( grep "$grep_mode" "\"artifactId\":.*?[^\]," "./.makemvn/makemvn.project" )
+                array=(${artifactId//:/ })
+                array=(${array[1]//,/ })
+                artifactId=${array}
+
+                array=(${groupId//./ })
+                for i in "${!array[@]}"; do
+                    if [ -z "$project_dir" ]; then
+                        project_dir="${array[i]}"
+                    else
+                        project_dir="$project_dir/${array[i]}"
+                    fi
+                done
+                project_dir="$project_dir/$artifactId"
+
+                old_dir="$project_dir/$old"
+                new_dir="$project_dir/$new"
+
+                #-- create directory for new version
+                mkdir -p $new_dir
+                cp -r $old_dir/* $new_dir
+                mv $new_dir/$artifactId-$old.pom $new_dir/$artifactId-$new.pom
+
+                #-- revise aar and pom
+                sed $sed_mode "s/$old/$new/g" $new_dir/$artifactId-$new.pom
+                rm $new_dir/$artifactId-$old.$extension
+                cp $1 $new_dir/$artifactId-$new.$extension
+
+                #-- change directory to revise maven-metadata and last updated
+                cd $project_dir
+                sed $sed_mode "/<release>/c\ \ \ \ <release>$new<\/release>" $meta_file
+                sed $sed_mode "/<version>$old<\/version>/a \ \ \ \ \ \ <version>$new<\/version>" $meta_file
+                sed $sed_mode "/<lastUpdated>/c\ \ \ \ <lastUpdated>$now<\/lastUpdated>" $meta_file
+
+                #-- delete backup files (name: ***e) when OS is Mac
+                if [ "$sed_mode" == "-ie" ]; then
+                    rm "$meta_file"e
+                    rm $new/$artifactId-$new.pome
+                fi
+
+                cd $parent_dir
+                sed $sed_mode "/\"version\":$old/c\"version\":$new\}" "./.makemvn/makemvn.project"
+                echo "\033[32;1mDeployed successfully.\033[m"
             else
-                echo "NO"
-                echo "$project_version"
+                echo "\033[31;1mDeployment error.\033[m"
+                echo "$file isn't a jar or aar file."
+                echo "Use 'makemvn run --help' or 'makemvn -r --help' to see more."
             fi
         elif [ -n "$2" ]; then
             echo "\033[31;1mDeployment error.\033[m"
@@ -214,7 +292,7 @@ run(){
     else
         echo "\033[31;1mDeployment error.\033[m"
         echo "Can't find working directory: $PWD/.makemvn"
-        echo "Please take 'makemvn init \$groupId \$artifactId' to initialize first."
+        echo "Please take 'makemvn init \$groupId \$artifactId' to initialize project first."
         echo "Use 'makemvn run --help' or 'makemvn -r --help' to see more."
     fi
 }
@@ -250,32 +328,3 @@ else
     suggestion "$1"
     exit -1
 fi
-
-
-#-- create directory for new version
-mkdir -p $new_dir
-cp -r $old_dir/* $new_dir
-mv $new_dir/$project_name-$old.pom $new_dir/$project_name-$new.pom
-
-
-#-- revise aar and pom
-sed $sed_mode "s/$old/$new/g" $new_dir/$project_name-$new.pom
-rm $new_dir/$project_name-$old.aar
-cp $project_name-release.aar $new_dir/$project_name-$new.aar
-
-
-#-- change directory to revise maven-metadata and last updated
-cd $dir
-sed $sed_mode "/<release>/c\ \ \ \ <release>$new<\/release>" $meta
-sed $sed_mode "/<version>$old<\/version>/a \ \ \ \ \ \ <version>$new<\/version>" $meta
-
-sed $sed_mode "/<lastUpdated>/c\ \ \ \ <lastUpdated>$now<\/lastUpdated>" $meta
-
-
-#-- delete backup files (name: ***e) when OS is Mac
-if [ "$sed_mode" == "-ie" ]; then
-    rm "$meta"e
-    rm $new/$project_name-$new.pome
-fi
-
-cd -
