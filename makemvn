@@ -6,6 +6,7 @@
 # Created Time: 2017-03-14 11:27:56
 #########################################################################
 
+
 meta_file='maven-metadata.xml'
 now=$(date +'%Y%m%d%H%M%S')
 parent_dir="$PWD"
@@ -261,12 +262,10 @@ run(){
 
                 #-- create directory for new version
                 mkdir -p $new_dir
-                cp -r $old_dir/* $new_dir
-                mv $new_dir/$artifactId-$old.pom $new_dir/$artifactId-$new.pom
+                cp $old_dir/$artifactId-$old.pom $new_dir/$artifactId-$new.pom
 
                 #-- revise aar and pom
                 sed $sed_mode "s/$old/$new/g" $new_dir/$artifactId-$new.pom
-                rm $new_dir/$artifactId-$old.$extension
                 cp $1 $new_dir/$artifactId-$new.$extension
 
                 #-- change directory to revise maven-metadata and last updated
