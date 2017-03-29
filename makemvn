@@ -11,7 +11,7 @@ meta_file='maven-metadata.xml'
 now=$(date +'%Y%m%d%H%M%S')
 parent_dir="$PWD"
 
-version='0.0.1'
+version='0.0.2'
 intro="MakeMaven Command Line Interface
 Version:$version written by Carson Wang
 

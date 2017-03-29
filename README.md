@@ -1,6 +1,9 @@
-# git-maven-gradle-doc
+# makemvn
 
-# Reference
+Easy to use shell scripts for maven project.
+
+
+# References
 
 * [gradle-git-repo-plugin](https://github.com/layerhq/gradle-git-repo-plugin) : Use a private git repo as a repository.
 * [maven-plugins](https://github.com/github/maven-plugins) : Official GitHub Maven Plugins.
