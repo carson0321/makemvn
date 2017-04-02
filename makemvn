@@ -14,8 +14,6 @@ now=$(date +"%Y%m%d%H%M%S")
 parent_dir="$PWD"
 
 
-
-
 #-- introduction to makemvn
 version="0.0.2"
 intro="MakeMaven Command Line Interface
@@ -64,21 +62,13 @@ Define argument:
   file_path     Input a jar or aar file."
 
 
-
-
-#-- other variables
-
-
-
 #-- check OS to determine sed's mode
 if [ "$(uname)" = "Darwin" ]; then
     #echo "Do something under Mac OS X platform"
     sed_mode="-ie"
-    grep_mode="-Eo"
 elif [ "$(expr substr $(uname -s) 1 5)" = "Linux" ]; then
     #echo "Do something under GNU/Linux platform"
     sed_mode="-i"
-    grep_mode="-Po"
 elif [ "$(expr substr $(uname -s) 1 10)" = "MINGW32_NT" ]; then
     echo "Do something under 32 bits Windows NT platform"
 elif [ "$(expr substr $(uname -s) 1 10)" = "MINGW64_NT" ]; then
@@ -226,16 +216,17 @@ run(){
     echo "Deploying maven's template..."
     if [ -f ./.makemvn/makemvn.project ]; then
         if [ -f "$1" -a -z "$2" ]; then
+            #-- check file's extension
             array=(${1//// })
             file="${array[${#array[@]}-1]}"
             array=(${file//./ })
             extension="${array[${#array[@]}-1]}"
             if [ "$extension" = "jar" -o "$extension" = "aar" ]; then
+                #-- get old version via makemvn.project
                 old=$( grep -Eo "\"version\":.*?[^\]}" "./.makemvn/makemvn.project" )
                 old=$( echo $old | tr -d -c 0-9.)
-                echo "Please enter your new version, such as, '0.0.1' or '0 0 1'."
                 while true; do
-                    read project_version
+                    read -e -p "Please enter your new version, such as, '0.0.1' or '0 0 1': " project_version
                     if [[ $project_version =~ ^[0-9]*.[0-9]*.[0-9]*$ ]]; then
                         new=($project_version)
                         new="$( IFS=$'.'; echo "${new[*]}" )"
@@ -248,25 +239,26 @@ run(){
                         if [ "$check_new" -gt "$check_old" ]; then
                             break;
                         else
-                            echo "\033[31;1mInput error.\033[m"
-                            echo "Old version number >= News version number."
+                            echo -e "${LIGHT_RED}Input error. Old version number >= News version number.${NC}"
                         fi
                     else
-                        echo "\033[31;1mInput error.\033[m"
-                        echo "Please answer numbers, such as, '0.0.1' or '0 0 1'."
+                        echo -e "${LIGHT_RED}Input error. Please answer numbers, such as, '0.0.1' or '0 0 1'.${NC}"
                     fi
                 done
 
-                groupId=$( grep "$grep_mode" "\"groupId\":.*?[^\]," "./.makemvn/makemvn.project" )
+                #-- get groupId via makemvn.project
+                groupId=$( grep -Eo "\"groupId\":.*?[^\]," "./.makemvn/makemvn.project" )
                 array=(${groupId//:/ })
                 array=(${array[1]//,/ })
                 groupId=${array}
 
-                artifactId=$( grep "$grep_mode" "\"artifactId\":.*?[^\]," "./.makemvn/makemvn.project" )
+                #-- get artifactId via makemvn.project
+                artifactId=$( grep -Eo "\"artifactId\":.*?[^\]," "./.makemvn/makemvn.project" )
                 array=(${artifactId//:/ })
                 array=(${array[1]//,/ })
                 artifactId=${array}
 
+                #-- compose project dir to create it
                 array=(${groupId//./ })
                 for i in "${!array[@]}"; do
                     if [ -z "$project_dir" ]; then
@@ -276,20 +268,19 @@ run(){
                     fi
                 done
                 project_dir="$project_dir/$artifactId"
-
                 old_dir="$project_dir/$old"
                 new_dir="$project_dir/$new"
 
                 #-- create directory for new version
-                mkdir -p $new_dir
-                cp $old_dir/$artifactId-$old.pom $new_dir/$artifactId-$new.pom
+                mkdir -p "$new_dir"
+                cp "$old_dir/$artifactId-$old.pom" "$new_dir/$artifactId-$new.pom"
 
                 #-- revise aar and pom
                 sed $sed_mode "s/$old/$new/g" $new_dir/$artifactId-$new.pom
-                cp $1 $new_dir/$artifactId-$new.$extension
+                cp "$1" "$new_dir/$artifactId-$new.$extension"
 
                 #-- change directory to revise maven-metadata and last updated
-                cd $project_dir
+                cd "$project_dir"
                 sed $sed_mode "/<release>/c\ \ \ \ <release>$new<\/release>" $meta_file
                 sed $sed_mode "/<version>$old<\/version>/a \ \ \ \ \ \ <version>$new<\/version>" $meta_file
                 sed $sed_mode "/<lastUpdated>/c\ \ \ \ <lastUpdated>$now<\/lastUpdated>" $meta_file
@@ -297,27 +288,28 @@ run(){
                 #-- delete backup files (name: ***e) when OS is Mac
                 if [ "$sed_mode" = "-ie" ]; then
                     rm "$meta_file"e
-                    rm $new/$artifactId-$new.pome
+                    rm "$new/$artifactId-$new.pome"
                 fi
 
-                cd $parent_dir
+                #check version on makemvn.project
+                cd "$parent_dir"
                 sed $sed_mode "/\"version\":$old/c\"version\":$new\}" "./.makemvn/makemvn.project"
-                echo "\033[32;1mDeployed successfully.\033[m"
+                echo -e "${LIGHT_GREEN}Deployed successfully.${NC}"
             else
-                echo "\033[31;1mDeployment error.\033[m"
-                echo "$file isn't a jar or aar file."
+                echo -e "${LIGHT_RED}Deployment error.${NC}"
+                echo -e "${LIGHT_PURPLE}$file${NC} isn't a jar or aar file."
                 echo "Use 'makemvn run --help' or 'makemvn -r --help' to see more."
             fi
         elif [ -n "$2" -o -z "$1" ]; then
-            echo "\033[31;1mDeployment error.\033[m"
+            echo -e "${LIGHT_RED}Deployment error.${NC}"
             echo "Use 'makemvn run --help' or 'makemvn -r --help' to see more."
         else
-            echo "\033[31;1mDeployment error.\033[m"
-            echo "Can't find such file: $1"
+            echo -e "${LIGHT_RED}Deployment error.${NC}"
+            echo -e "Can't find such file: ${LIGHT_PURPLE}$1${NC}"
             echo "Use 'makemvn run --help' or 'makemvn -r --help' to see more."
         fi
     else
-        echo "\033[31;1mDeployment error.\033[m"
+        echo -e "${LIGHT_RED}Deployment error.${NC}"
         echo "Can't find working directory: $PWD/.makemvn"
         echo "Please take 'makemvn init \$groupId \$artifactId' to initialize project first."
         echo "Use 'makemvn init --help' or 'makemvn -i --help' to see more."
@@ -348,8 +340,7 @@ elif [ "$1" = "-r" -o "$1" = "--run" -o "$1" = "run" ]; then
     if [ "$2" = "-h" -o "$2" = "--help" -o "$2" = "help" ]; then
         echo -e "$intro_run"
     else
-        echo "run"
-        #run "$2" "$3"
+        run "$2" "$3"
     fi
     exit 0
 else
