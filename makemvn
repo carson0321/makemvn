@@ -59,17 +59,17 @@ Define argument:
   file_path     It's a jar or aar file."
 
 #-- check OS to determine sed's mode
-if [ "$(uname)" == "Darwin" ]; then
+if [ "$(uname)" = "Darwin" ]; then
     #echo "Do something under Mac OS X platform"
     sed_mode="-ie"
     grep_mode="-Eo"
-elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
+elif [ "$(expr substr $(uname -s) 1 5)" = "Linux" ]; then
     #echo "Do something under GNU/Linux platform"
     sed_mode="-i"
     grep_mode="-Po"
-elif [ "$(expr substr $(uname -s) 1 10)" == "MINGW32_NT" ]; then
+elif [ "$(expr substr $(uname -s) 1 10)" = "MINGW32_NT" ]; then
     echo "Do something under 32 bits Windows NT platform"
-elif [ "$(expr substr $(uname -s) 1 10)" == "MINGW64_NT" ]; then
+elif [ "$(expr substr $(uname -s) 1 10)" = "MINGW64_NT" ]; then
     echo "Do something under 64 bits Windows NT platform"
 fi
 
@@ -77,19 +77,19 @@ fi
 suggestion(){
     command="$1"
     command="${command//[!a-zA-Z]/}"
-    if [[ "$command" == "h"* ]]; then
+    if [[ "$command" = "h"* ]]; then
         echo "Did you mean this?"
         echo "\thelp"
-    elif [[ "$command" == "v"* ]]; then
+    elif [[ "$command" = "v"* ]]; then
         echo "Did you mean this?"
         echo "\tversion"
-    elif [[ "$command" == "i"* ]]; then
+    elif [[ "$command" = "i"* ]]; then
         echo "Did you mean this?"
         echo "\tinit"
-    elif [[ "$command" == "r"* ]]; then
+    elif [[ "$command" = "r"* ]]; then
         echo "Did you mean this?"
         echo "\trun"
-    elif [[ "$command" == "p"* ]]; then
+    elif [[ "$command" = "p"* ]]; then
         echo "Did you mean this?"
         echo "\tpush"
     fi
@@ -136,7 +136,7 @@ init(){
             file="${array[${#array[@]}-1]}"
             array=(${file//./ })
             extension="${array[${#array[@]}-1]}"
-            if [ "$extension" == "jar" -o "$extension" == "aar" ]; then
+            if [ "$extension" = "jar" -o "$extension" = "aar" ]; then
                 break
             else
                 echo "\033[31;1mInput error. Please answer jar or aar.\033[m"
@@ -210,7 +210,7 @@ run(){
             file="${array[${#array[@]}-1]}"
             array=(${file//./ })
             extension="${array[${#array[@]}-1]}"
-            if [ "$extension" == "jar" -o "$extension" == "aar" ]; then
+            if [ "$extension" = "jar" -o "$extension" = "aar" ]; then
                 old=$( grep -Eo "\"version\":.*?[^\]}" "./.makemvn/makemvn.project" )
                 old=$( echo $old | tr -d -c 0-9.)
                 echo "Please enter your new version, such as, '0.0.1' or '0 0 1'."
@@ -275,7 +275,7 @@ run(){
                 sed $sed_mode "/<lastUpdated>/c\ \ \ \ <lastUpdated>$now<\/lastUpdated>" $meta_file
 
                 #-- delete backup files (name: ***e) when OS is Mac
-                if [ "$sed_mode" == "-ie" ]; then
+                if [ "$sed_mode" = "-ie" ]; then
                     rm "$meta_file"e
                     rm $new/$artifactId-$new.pome
                 fi
@@ -309,21 +309,21 @@ run(){
 if [ -z "$1" ]; then
     echo "$intro"
     exit 0
-elif [ "$1" == "-h" -o "$1" == "--help" -o "$1" == "help" ]; then
+elif [ "$1" = "-h" -o "$1" = "--help" -o "$1" = "help" ]; then
     echo "$intro"
     exit 0
-elif [ "$1" == "-v" -o "$1" == "--version" -o "$1" == "version" ]; then
+elif [ "$1" = "-v" -o "$1" = "--version" -o "$1" = "version" ]; then
     echo "Makemvn version $version"
     exit 0
-elif [ "$1" == "-i" -o "$1" == "--init" -o "$1" == "init" ]; then
-    if [ "$2" == "-h" -o "$2" == "--help" -o "$2" == "help" ]; then
+elif [ "$1" = "-i" -o "$1" = "--init" -o "$1" = "init" ]; then
+    if [ "$2" = "-h" -o "$2" = "--help" -o "$2" = "help" ]; then
         echo "$intro_init"
     else
         init "$2" "$3" "$4"
     fi
     exit 0
-elif [ "$1" == "-r" -o "$1" == "--run" -o "$1" == "run" ]; then
-    if [ "$2" == "-h" -o "$2" == "--help" -o "$2" == "help" ]; then
+elif [ "$1" = "-r" -o "$1" = "--run" -o "$1" = "run" ]; then
+    if [ "$2" = "-h" -o "$2" = "--help" -o "$2" = "help" ]; then
         echo "$intro_run"
     else
         run "$2" "$3"
